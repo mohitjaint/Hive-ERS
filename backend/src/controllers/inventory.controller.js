@@ -26,7 +26,7 @@ export const getItemById = asyncHandler(async (req, res) => {
 
 // ─── CREATE item (inventory_manager or coordinator who is also inventory_manager) ─
 export const createItem = asyncHandler(async (req, res) => {
-  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId } = req.body;
+  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable } = req.body;
 
   if (!name || !description || !category || totalQuantity == null) {
     throw new ApiError(400, 'name, description, category, and totalQuantity are required');
@@ -48,6 +48,7 @@ export const createItem = asyncHandler(async (req, res) => {
     name: name.trim(),
     description,
     category,
+    isConsumable: isConsumable === 'true' || isConsumable === true,
     totalQuantity: total,
     availableQuantity: available,
     damagedQuantity: damaged,
@@ -65,11 +66,12 @@ export const updateItem = asyncHandler(async (req, res) => {
   const item = await Inventory.findById(req.params.id);
   if (!item) throw new ApiError(404, 'Item not found');
 
-  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId } = req.body;
+  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable } = req.body;
 
   if (name) item.name = name.trim();
   if (description) item.description = description;
   if (category) item.category = category;
+  if (isConsumable !== undefined) item.isConsumable = isConsumable === 'true' || isConsumable === true;
   
   if (storageId !== undefined) {
     item.storageId = storageId || null;

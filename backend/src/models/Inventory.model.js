@@ -5,6 +5,7 @@ const inventorySchema = new mongoose.Schema({
   image: { type: String, required: true },
   description: { type: String, required: true },
   category: { type: String, required: true },
+  isConsumable: { type: Boolean, default: false },
   totalQuantity: { type: Number, required: true, min: 0 },
   availableQuantity: { type: Number, required: true, min: 0 },
   damagedQuantity: { type: Number, required: true, default: 0, min: 0 },

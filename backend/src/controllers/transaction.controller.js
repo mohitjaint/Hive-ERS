@@ -25,36 +25,49 @@ export const createTransactionRequest = asyncHandler(async (req, res) => {
   if (!items || !Array.isArray(items) || items.length === 0) {
     throw new ApiError(400, 'items array is required and cannot be empty');
   }
-  if (!expectedReturnDate) throw new ApiError(400, 'expectedReturnDate is required');
-
-  const returnDate = new Date(expectedReturnDate);
-  if (isNaN(returnDate) || returnDate <= new Date()) {
-    throw new ApiError(400, 'expectedReturnDate must be a valid future date');
-  }
-
   // Validate all items first (no DB writes yet)
   const validatedItems = [];
+  let hasNonConsumable = false;
+  
   for (const entry of items) {
     const { item, quantity } = entry;
     if (!item || !quantity || quantity < 1) throw new ApiError(400, 'Each item must have a valid item id and quantity >= 1');
     const inventoryItem = await validateItemRequest(item, quantity, req.member._id);
 
+    if (!inventoryItem.isConsumable) {
+      hasNonConsumable = true;
+    }
+
+    validatedItems.push({ item, quantity, inventoryItem });
+  }
+
+  let returnDate = null;
+  if (hasNonConsumable) {
+    if (!expectedReturnDate) throw new ApiError(400, 'expectedReturnDate is required for non-consumable items');
+    returnDate = new Date(expectedReturnDate);
+    if (isNaN(returnDate) || returnDate <= new Date()) {
+      throw new ApiError(400, 'expectedReturnDate must be a valid future date');
+    }
+  }
+
+  for (const entry of validatedItems) {
+    const { inventoryItem } = entry;
     // Check maxDurationDays policy
-    if (inventoryItem.policy.maxDurationDays !== null) {
+    if (inventoryItem.policy.maxDurationDays !== null && returnDate) {
       const durationMs = returnDate - new Date();
       const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
       if (durationDays > inventoryItem.policy.maxDurationDays) {
         throw new ApiError(400, `You can keep "${inventoryItem.name}" for at most ${inventoryItem.policy.maxDurationDays} day(s)`);
       }
     }
-
-    validatedItems.push({ item, quantity });
   }
+
+  const finalItems = validatedItems.map(entry => ({ item: entry.item, quantity: entry.quantity }));
 
   const transaction = await Transaction.create({
     requestedBy: req.member._id,
     expectedReturnDate: returnDate,
-    items: validatedItems,
+    items: finalItems,
     status: 'pending',
   });
 
@@ -119,6 +132,7 @@ export const approveTransaction = asyncHandler(async (req, res) => {
   }
 
   // Re-validate availability at approval time
+  let hasNonConsumable = false;
   for (const entry of transaction.items) {
     const item = await Inventory.findById(entry.item._id || entry.item);
     if (!item) throw new ApiError(404, 'Item no longer exists');
@@ -126,6 +140,7 @@ export const approveTransaction = asyncHandler(async (req, res) => {
     if (item.availableQuantity < entry.quantity) {
       throw new ApiError(400, `Insufficient quantity for "${item.name}". Available: ${item.availableQuantity}`);
     }
+    if (!item.isConsumable) hasNonConsumable = true;
   }
 
   // Deduct inventory
@@ -135,7 +150,7 @@ export const approveTransaction = asyncHandler(async (req, res) => {
     });
   }
 
-  transaction.status = 'approved';
+  transaction.status = hasNonConsumable ? 'approved' : 'completed';
   transaction.approvedBy = req.member._id;
   transaction.issuedOn = new Date();
   await transaction.save();
@@ -162,7 +177,7 @@ export const rejectTransaction = asyncHandler(async (req, res) => {
 export const returnTransaction = asyncHandler(async (req, res) => {
   const { itemRemarks } = req.body; // optional: [{ itemId, damagedQuantity, remarks }]
 
-  const transaction = await Transaction.findById(req.params.id);
+  const transaction = await Transaction.findById(req.params.id).populate('items.item');
   if (!transaction) throw new ApiError(404, 'Transaction not found');
   if (transaction.status !== 'approved') {
     throw new ApiError(400, `Can only return an approved transaction. Current status: "${transaction.status}"`);
@@ -170,7 +185,9 @@ export const returnTransaction = asyncHandler(async (req, res) => {
 
   // Process each item return
   for (const entry of transaction.items) {
-    const remark = itemRemarks?.find((r) => r.itemId?.toString() === entry.item.toString());
+    if (entry.item.isConsumable) continue;
+
+    const remark = itemRemarks?.find((r) => r.itemId?.toString() === entry.item._id.toString());
     const damaged = remark?.damagedQuantity ?? 0;
 
     if (damaged < 0 || damaged > entry.quantity) {
@@ -181,7 +198,7 @@ export const returnTransaction = asyncHandler(async (req, res) => {
     if (remark?.remarks) entry.remarks = remark.remarks;
 
     // Return non-damaged items to available stock; add damaged to damagedQuantity
-    await Inventory.findByIdAndUpdate(entry.item, {
+    await Inventory.findByIdAndUpdate(entry.item._id, {
       $inc: {
         availableQuantity: entry.quantity - damaged,
         damagedQuantity: damaged,

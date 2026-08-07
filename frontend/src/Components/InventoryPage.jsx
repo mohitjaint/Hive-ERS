@@ -38,13 +38,12 @@ function BorrowModal({ item, onClose, onSuccess }) {
     : item.availableQuantity;
 
   const submit = async () => {
-    if (!returnDate) return setError('Please select a return date');
+    if (!item.isConsumable && !returnDate) return setError('Please select a return date');
     setLoading(true); setError('');
     try {
-      await transactionsApi.request({
-        items: [{ item: item._id, quantity: qty }],
-        expectedReturnDate: returnDate,
-      });
+      const payload = { items: [{ item: item._id, quantity: qty }] };
+      if (!item.isConsumable) payload.expectedReturnDate = returnDate;
+      await transactionsApi.request(payload);
       onSuccess();
     } catch (e) {
       setError(e.message);
@@ -79,12 +78,14 @@ function BorrowModal({ item, onClose, onSuccess }) {
               onChange={(e) => setQty(Math.max(1, Math.min(maxQty, Number(e.target.value))))}
               className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
           </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">Expected Return Date</label>
-            <input type="date" min={minDateStr} value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
-              className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
-          </div>
+          {!item.isConsumable && (
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Expected Return Date</label>
+              <input type="date" min={minDateStr} value={returnDate}
+                onChange={(e) => setReturnDate(e.target.value)}
+                className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
+            </div>
+          )}
           {error && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle size={12}/>{error}</p>}
         </div>
         <div className="flex gap-3 p-5 border-t border-gray-800">
@@ -107,6 +108,7 @@ function ItemFormModal({ item, onClose, onSuccess }) {
     name: item?.name || '',
     description: item?.description || '',
     category: item?.category || '',
+    isConsumable: item?.isConsumable ?? false,
     totalQuantity: item?.totalQuantity ?? '',
     availableQuantity: item?.availableQuantity ?? '',
     damagedQuantity: item?.damagedQuantity ?? 0,
@@ -176,6 +178,16 @@ function ItemFormModal({ item, onClose, onSuccess }) {
           <div className="grid grid-cols-2 gap-3">
             <div><label className="text-xs text-gray-400 block mb-1">Name</label><input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
             <div><label className="text-xs text-gray-400 block mb-1">Category</label><input className={inputCls} value={form.category} onChange={(e) => set('category', e.target.value)} /></div>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-bg rounded-xl border border-gray-800">
+            <div>
+              <p className="text-heading text-sm font-medium">Consumable Item</p>
+              <p className="text-gray-500 text-[10px]">Item is given permanently, not returned</p>
+            </div>
+            <button type="button" onClick={() => set('isConsumable', !form.isConsumable)}
+              className={`w-10 h-5 rounded-full transition-colors relative ${form.isConsumable ? 'bg-gold' : 'bg-gray-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${form.isConsumable ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
           </div>
           <div><label className="text-xs text-gray-400 block mb-1">Description</label><textarea className={inputCls} rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
           <div className="grid grid-cols-3 gap-3">
@@ -255,7 +267,7 @@ function PolicyModal({ item, onClose, onSuccess }) {
             </div>
             <button onClick={() => setForm((f) => ({ ...f, allowedToTake: !f.allowedToTake }))}
               className={`w-12 h-6 rounded-full transition-colors relative ${form.allowedToTake ? 'bg-gold' : 'bg-gray-700'}`}>
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.allowedToTake ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.allowedToTake ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
           </div>
           <div>
@@ -297,7 +309,10 @@ function ItemCard({ item, isManager, isCoordinator, onBorrow, onEdit, onDelete, 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-heading font-semibold text-sm truncate">{item.name}</h3>
+            <h3 className="text-heading font-semibold text-sm truncate flex items-center gap-2">
+              {item.name}
+              {item.isConsumable && <span className="bg-blue-900/40 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider">CONSUMABLE</span>}
+            </h3>
             <p className="text-gray-500 text-xs mt-0.5 truncate">{item.category}</p>
           </div>
           <StatusBadge item={item} />

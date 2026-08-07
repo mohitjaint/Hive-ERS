@@ -12,6 +12,7 @@ function StatusBadge({ status }) {
     rejected: { cls: 'bg-red-900/40 text-red-400 border-red-700/40', label: 'REJECTED' },
     returned: { cls: 'bg-emerald-900/40 text-emerald-400 border-emerald-700/40', label: 'RETURNED' },
     overdue:  { cls: 'bg-red-900/40 text-red-400 border-red-700/40', label: 'OVERDUE' },
+    completed: { cls: 'bg-indigo-900/40 text-indigo-400 border-indigo-700/40', label: 'COMPLETED' },
   };
   const s = map[status] || { cls: 'bg-gray-800 text-gray-400 border-gray-700', label: status?.toUpperCase() };
   return (

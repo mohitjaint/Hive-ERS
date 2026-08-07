@@ -11,9 +11,10 @@ function StatusBadge({ status }) {
   const map = {
     pending:  'bg-amber-900/30 text-amber-400 border-amber-800/40',
     approved: 'bg-blue-900/30 text-blue-400 border-blue-800/40',
-    rejected: 'bg-gray-800 text-gray-400 border-gray-700',
+    rejected: 'bg-red-900/30 text-red-400 border-red-800/40',
     returned: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/40',
     overdue:  'bg-red-900/30 text-red-400 border-red-800/40',
+    completed: 'bg-indigo-900/30 text-indigo-400 border-indigo-800/40',
   };
   return (
     <span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded border ${map[status] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>

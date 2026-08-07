@@ -16,6 +16,7 @@ const STATUS_META = {
   approved: { icon: CheckCircle2, cls: 'bg-blue-900/30 text-blue-400 border-blue-800/40',      label: 'APPROVED' },
   returned: { icon: CheckCircle2, cls: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/40', label: 'RETURNED' },
   overdue:  { icon: AlertTriangle, cls: 'bg-red-900/30 text-red-400 border-red-800/40',         label: 'OVERDUE'  },
+  completed: { icon: CheckCircle2, cls: 'bg-indigo-900/30 text-indigo-400 border-indigo-800/40', label: 'COMPLETED' },
   rejected: { icon: XCircle,      cls: 'bg-gray-800 text-gray-400 border-gray-700',            label: 'REJECTED' },
 };
 
