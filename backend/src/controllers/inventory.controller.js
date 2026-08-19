@@ -7,11 +7,14 @@ import { cloudinary } from '../utils/cloudinary.js';
 
 // ─── GET all inventory items ──────────────────────────────────────────────────
 export const getAllItems = asyncHandler(async (req, res) => {
-  const { category, search } = req.query;
+  const { category, search, isCollegeFunded } = req.query;
   const filter = {};
 
   if (category) filter.category = category;
   if (search) filter.name = { $regex: search, $options: 'i' };
+  if (isCollegeFunded !== undefined && isCollegeFunded !== '') {
+    filter.isCollegeFunded = isCollegeFunded === 'true' || isCollegeFunded === true;
+  }
 
   const items = await Inventory.find(filter).populate('storageId', 'storageNumber name').sort({ createdAt: -1 });
   return res.status(200).json(new ApiResponse(200, 'Inventory fetched', items));
@@ -26,7 +29,7 @@ export const getItemById = asyncHandler(async (req, res) => {
 
 // ─── CREATE item (inventory_manager or coordinator who is also inventory_manager) ─
 export const createItem = asyncHandler(async (req, res) => {
-  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable } = req.body;
+  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable, isCollegeFunded, fundingSourceNote } = req.body;
 
   if (!name || !description || !category || totalQuantity == null) {
     throw new ApiError(400, 'name, description, category, and totalQuantity are required');
@@ -49,6 +52,8 @@ export const createItem = asyncHandler(async (req, res) => {
     description,
     category,
     isConsumable: isConsumable === 'true' || isConsumable === true,
+    isCollegeFunded: isCollegeFunded !== undefined ? (isCollegeFunded === 'true' || isCollegeFunded === true) : true,
+    fundingSourceNote: fundingSourceNote || '',
     totalQuantity: total,
     availableQuantity: available,
     damagedQuantity: damaged,
@@ -66,12 +71,14 @@ export const updateItem = asyncHandler(async (req, res) => {
   const item = await Inventory.findById(req.params.id);
   if (!item) throw new ApiError(404, 'Item not found');
 
-  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable } = req.body;
+  const { name, description, category, totalQuantity, availableQuantity, damagedQuantity, storageId, isConsumable, isCollegeFunded, fundingSourceNote } = req.body;
 
   if (name) item.name = name.trim();
   if (description) item.description = description;
   if (category) item.category = category;
   if (isConsumable !== undefined) item.isConsumable = isConsumable === 'true' || isConsumable === true;
+  if (isCollegeFunded !== undefined) item.isCollegeFunded = isCollegeFunded === 'true' || isCollegeFunded === true;
+  if (fundingSourceNote !== undefined) item.fundingSourceNote = fundingSourceNote;
   
   if (storageId !== undefined) {
     item.storageId = storageId || null;

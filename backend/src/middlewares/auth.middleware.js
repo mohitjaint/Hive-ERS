@@ -38,10 +38,15 @@ export const verifyMember = asyncHandler(async (req, res, next) => {
 });
 
 
+// Role hierarchy: higher index = more permissions
+const ROLE_HIERARCHY = ['member', 'inventory_manager', 'coordinator'];
+
 export const verifyRole = (...requiredRoles) => asyncHandler(async (req, res, next) => {
     const member = req.member;
+    const memberLevel = ROLE_HIERARCHY.indexOf(member.role);
+    const minRequiredLevel = Math.min(...requiredRoles.map(r => ROLE_HIERARCHY.indexOf(r)));
 
-    if (!requiredRoles.includes(member.role)) {
+    if (memberLevel === -1 || memberLevel < minRequiredLevel) {
         return next(new ApiError(403, "Forbidden: User does not have the required role"));
     }
 

@@ -6,6 +6,8 @@ const inventorySchema = new mongoose.Schema({
   description: { type: String, required: true },
   category: { type: String, required: true },
   isConsumable: { type: Boolean, default: false },
+  isCollegeFunded: { type: Boolean, default: true },
+  fundingSourceNote: { type: String, trim: true, default: '' },
   totalQuantity: { type: Number, required: true, min: 0 },
   availableQuantity: { type: Number, required: true, min: 0 },
   damagedQuantity: { type: Number, required: true, default: 0, min: 0 },

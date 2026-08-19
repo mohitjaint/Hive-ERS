@@ -179,8 +179,8 @@ export const returnTransaction = asyncHandler(async (req, res) => {
 
   const transaction = await Transaction.findById(req.params.id).populate('items.item');
   if (!transaction) throw new ApiError(404, 'Transaction not found');
-  if (transaction.status !== 'approved') {
-    throw new ApiError(400, `Can only return an approved transaction. Current status: "${transaction.status}"`);
+  if (!['approved', 'overdue'].includes(transaction.status)) {
+    throw new ApiError(400, `Can only return an approved or overdue transaction. Current status: "${transaction.status}"`);
   }
 
   // Process each item return

@@ -221,9 +221,16 @@ function TransactionsTab({ isManager, isCoordinator }) {
                       </button>
                     </>
                   )}
-                  {tx.status === 'approved' && (
-                    <button onClick={() => setReturnTx(tx)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-medium hover:bg-blue-900/50 transition-colors">
-                      <RotateCcw size={13} /> Return
+                  {(tx.status === 'approved' || tx.status === 'overdue') && (
+                    <button
+                      onClick={() => setReturnTx(tx)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        tx.status === 'overdue'
+                          ? 'bg-amber-900/30 border border-amber-800/40 text-amber-400 hover:bg-amber-900/50'
+                          : 'bg-blue-900/30 border border-blue-800/40 text-blue-400 hover:bg-blue-900/50'
+                      }`}
+                    >
+                      <RotateCcw size={13} /> Return{tx.status === 'overdue' ? ' (Overdue)' : ''}
                     </button>
                   )}
                 </div>
