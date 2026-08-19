@@ -393,7 +393,154 @@ function MembersTab() {
   );
 }
 
-/* ─── Main Admin Page ───────────────────────────────────────────────────────── */
+/* ─── Transfer Power tab (coordinator only) ─────────────────────────────────── */
+function TransferPowerTab() {
+  const { member: self } = useMember();
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState('');
+  const [error, setError] = useState('');
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const fetchMembers = () => {
+    setLoading(true);
+    membersApi.getAll()
+      .then((res) => { setMembers(res.data || []); setError(''); })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchMembers(); }, []);
+
+  const coordinators = members.filter((m) => m.role === 'coordinator');
+  const nonCoordinators = members.filter((m) => m.role !== 'coordinator');
+  const atMax = coordinators.length >= 3;
+  const isLastCoordinator = coordinators.length <= 1;
+
+  const promote = async (m) => {
+    if (!confirm(`Promote ${m.name} to Coordinator?`)) return;
+    try {
+      await membersApi.changeRole(m._id, 'coordinator');
+      showToast(`${m.name} is now a Coordinator`);
+      fetchMembers();
+    } catch (e) { alert(e.message); }
+  };
+
+  const stepDown = async () => {
+    if (!confirm('Step down from Coordinator? You will become a Member.')) return;
+    try {
+      await membersApi.changeRole(self._id, 'member');
+      showToast('You have stepped down. Refreshing...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) { alert(e.message); }
+  };
+
+  return (
+    <div className="space-y-6">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-2.5 bg-emerald-900/80 border border-emerald-700/40 text-emerald-300 text-sm rounded-xl shadow-lg backdrop-blur-sm">
+          {toast}
+        </div>
+      )}
+
+      {/* Current Coordinators */}
+      <div className="bg-surface border border-gray-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-heading flex items-center gap-2">
+            <ShieldCheck size={15} className="text-purple-400" /> Current Coordinators
+          </h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-purple-900/20 text-purple-400 border-purple-800/40">
+            {coordinators.length} / 3
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-gray-600" /></div>
+        ) : error ? (
+          <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle size={12} />{error}</p>
+        ) : (
+          <div className="space-y-2">
+            {coordinators.map((c) => {
+              const isSelf = c._id === self?._id;
+              return (
+                <div key={c._id} className={`flex items-center justify-between p-3 rounded-lg border ${
+                  isSelf ? 'border-purple-800/50 bg-purple-900/10' : 'border-gray-800 bg-bg'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-900/30 border border-purple-800/40 flex items-center justify-center text-purple-400 text-xs font-bold">
+                      {c.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-heading">{c.name} {isSelf && <span className="text-[10px] text-purple-400 ml-1">(you)</span>}</p>
+                      <p className="text-[11px] text-gray-500">{c.email}</p>
+                    </div>
+                  </div>
+                  {isSelf && (
+                    <button
+                      onClick={stepDown}
+                      disabled={isLastCoordinator}
+                      title={isLastCoordinator ? 'You are the last coordinator. Promote someone first.' : 'Step down to Member'}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-red-900/20 border-red-800/30 text-red-400 hover:bg-red-900/40"
+                    >
+                      <UserX size={13} /> Step Down
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Promote Someone */}
+      <div className={`bg-surface border rounded-xl p-5 space-y-4 ${
+        atMax ? 'border-gray-800 opacity-60' : 'border-gray-800'
+      }`}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-heading flex items-center gap-2">
+            <UserCheck size={15} className="text-emerald-400" /> Promote to Coordinator
+          </h2>
+          {atMax && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-amber-900/20 text-amber-400 border-amber-800/40">
+              Max 3 reached
+            </span>
+          )}
+        </div>
+
+        {!loading && nonCoordinators.length === 0 && (
+          <p className="text-gray-600 text-xs text-center py-4">No other members to promote.</p>
+        )}
+
+        {!loading && nonCoordinators.length > 0 && (
+          <div className="space-y-2">
+            {nonCoordinators.map((m) => (
+              <div key={m._id} className="flex items-center justify-between p-3 rounded-lg border border-gray-800 bg-bg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 text-xs font-bold">
+                    {m.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-heading">{m.name}</p>
+                    <p className="text-[11px] text-gray-500">{m.email} · <span className="capitalize">{m.role.replace('_', ' ')}</span></p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => promote(m)}
+                  disabled={atMax}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-emerald-900/20 border-emerald-800/30 text-emerald-400 hover:bg-emerald-900/40"
+                >
+                  <UserCheck size={13} /> Promote
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const isManager = useIsManager();
   const isCoordinator = useIsCoordinator();
@@ -411,6 +558,7 @@ export default function AdminPage() {
   const TABS = [
     { key: 'transactions', label: 'Transactions', icon: Package },
     ...(isCoordinator ? [{ key: 'members', label: 'Members', icon: Users }] : []),
+    ...(isCoordinator ? [{ key: 'transfer', label: 'Transfer Power', icon: ShieldCheck }] : []),
   ];
 
   return (
@@ -441,6 +589,7 @@ export default function AdminPage() {
       {/* Tab content */}
       {tab === 'transactions' && <TransactionsTab isManager={isManager} isCoordinator={isCoordinator} />}
       {tab === 'members' && isCoordinator && <MembersTab />}
+      {tab === 'transfer' && isCoordinator && <TransferPowerTab />}
     </div>
   );
 }
