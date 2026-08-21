@@ -16,7 +16,7 @@ export const auth = betterAuth({
   ],
 
   onAPIError: {
-    errorURL: `${process.env.CORS_ORIGIN}/login`,
+    errorURL: `${process.env.CORS_ORIGIN}`,
   },
 
   database: mongodbAdapter(db, {
