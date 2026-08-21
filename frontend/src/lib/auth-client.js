@@ -1,6 +1,10 @@
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient } from "better-auth/react";
+
+const authBaseUrl =
+  import.meta.env.VITE_AUTH_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  window.location.origin;
 
 export const authClient = createAuthClient({
-    /** The base URL of the server (optional if you're using the same domain) */
-    baseURL: import.meta.env.VITE_BACKEND_URL
-})
+  baseURL: authBaseUrl,
+});
