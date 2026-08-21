@@ -16,7 +16,7 @@ export const auth = betterAuth({
   ],
 
   onAPIError: {
-    errorURL: "http://localhost:3001/login",
+    errorURL: `${process.env.CORS_ORIGIN}/login`,
   },
 
   database: mongodbAdapter(db, {
