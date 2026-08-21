@@ -7,16 +7,19 @@ import { APIError } from "better-auth/api";
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
 const db = client.db();
-console.log("CORS_ORIGIN =", process.env.CORS_ORIGIN);
-console.log("trustedOrigins =", [process.env.CORS_ORIGIN]);
+
+const backendBaseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3030";
+const trustedOrigin = process.env.CORS_ORIGIN || "http://localhost:3001";
 
 export const auth = betterAuth({
+  baseURL: backendBaseUrl,
+
   trustedOrigins: [
-    process.env.CORS_ORIGIN,
+    trustedOrigin,
   ],
 
   onAPIError: {
-    errorURL: `${process.env.CORS_ORIGIN}`,
+    errorURL: trustedOrigin,
   },
 
   database: mongodbAdapter(db, {

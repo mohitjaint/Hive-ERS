@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/auth/:path*",
+      "destination": "https://hive-d1lj.onrender.com/api/auth/:path*"
+    }
+  ]
+}
