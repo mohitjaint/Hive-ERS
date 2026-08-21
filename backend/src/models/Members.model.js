@@ -21,7 +21,6 @@ const memberSchema = new mongoose.Schema({
       "member",
       "inventory_manager",
       "coordinator",
-      "admin",
     ],
     default: "member",
   },

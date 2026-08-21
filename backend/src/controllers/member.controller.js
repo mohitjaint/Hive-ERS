@@ -56,24 +56,49 @@ export const toggleMemberActive = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, `Member ${member.active ? 'activated' : 'deactivated'}`, member));
 });
 
-// ─── CHANGE member role (coordinator only: member ↔ inventory_manager) ───────
+// ─── CHANGE member role (coordinator only) ────────────────────────────────────
 export const changeMemberRole = asyncHandler(async (req, res) => {
   const { role } = req.body;
 
-  const allowedRoles = ['member', 'inventory_manager'];
+  const allowedRoles = ['member', 'inventory_manager', 'coordinator'];
   if (!allowedRoles.includes(role)) {
-    throw new ApiError(400, 'Role must be "member" or "inventory_manager"');
+    throw new ApiError(400, 'Invalid role. Must be "member", "inventory_manager", or "coordinator"');
   }
 
   const member = await Member.findById(req.params.id);
   if (!member) throw new ApiError(404, 'Member not found');
 
-  if (member.role === 'coordinator') {
-    throw new ApiError(403, 'Cannot change the role of a coordinator');
+  const isSelf = member._id.toString() === req.member._id.toString();
+
+  // Block demoting another coordinator — only self-demotion is allowed
+  if (member.role === 'coordinator' && !isSelf) {
+    throw new ApiError(403, 'You cannot change the role of another coordinator');
   }
 
-  if (member._id.toString() === req.member._id.toString()) {
+  // Non-coordinators cannot change their own role
+  if (isSelf && req.member.role !== 'coordinator') {
     throw new ApiError(400, 'Cannot change your own role');
+  }
+
+  // Coordinators stepping down can only go to 'member'
+  if (isSelf && role !== 'member') {
+    throw new ApiError(400, 'You can only step down to member');
+  }
+
+  // Max 3 coordinators cap
+  if (role === 'coordinator') {
+    const count = await Member.countDocuments({ role: 'coordinator' });
+    if (count >= 3) {
+      throw new ApiError(400, 'Maximum of 3 coordinators allowed. Demote a coordinator first.');
+    }
+  }
+
+  // Min 1 coordinator floor (step-down guard)
+  if (isSelf && member.role === 'coordinator' && role === 'member') {
+    const count = await Member.countDocuments({ role: 'coordinator' });
+    if (count <= 1) {
+      throw new ApiError(400, 'You are the last coordinator. Promote someone before stepping down.');
+    }
   }
 
   member.role = role;
@@ -81,6 +106,7 @@ export const changeMemberRole = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, 'Member role updated', member));
 });
+
 
 // ─── DELETE member (coordinator) ─────────────────────────────────────────────
 export const deleteMember = asyncHandler(async (req, res) => {

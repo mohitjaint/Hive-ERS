@@ -3,8 +3,8 @@ import {
   ChevronRight, ChevronLeft, LayoutDashboard,
   Package, History, Settings, LogOut, Users, ShieldCheck, Box
 } from "lucide-react";
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, Link } from "react-router-dom";
 
 const NAV_ITEMS = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["member", "inventory_manager", "coordinator"] },
@@ -15,8 +15,15 @@ const NAV_ITEMS = [
 ];
 
 function SideBar({ session, member, onSignOut }) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar_collapsed");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const location = useLocation();
+
+  useEffect(() => {
+    localStorage.setItem("sidebar_collapsed", JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
 
   const user = session?.user;
   const displayName = user?.name || user?.email?.split("@")[0] || "ERS Member";
@@ -83,9 +90,9 @@ function SideBar({ session, member, onSignOut }) {
         {visibleNav.map(({ href, icon: Icon, label }) => {
           const isActive = location.pathname === href;
           return (
-            <a
+            <Link
               key={href}
-              href={href}
+              to={href}
               className={`flex items-center gap-3 h-10 px-3 rounded-lg transition-colors font-mono text-sm
                 ${isActive
                   ? "bg-gold/10 text-gold border border-gold/20"
@@ -94,7 +101,7 @@ function SideBar({ session, member, onSignOut }) {
             >
               <Icon size={16} className="shrink-0" />
               {!isCollapsed && <span>{label}</span>}
-            </a>
+            </Link>
           );
         })}
       </nav>

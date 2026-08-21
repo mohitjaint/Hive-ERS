@@ -5,10 +5,10 @@ const transactionSchema = new mongoose.Schema({
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', default: null },
   issuedOn: { type: Date, default: null },
   returnDate: { type: Date, default: null },
-  expectedReturnDate: { type: Date, required: true },
+  expectedReturnDate: { type: Date, default: null },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'returned', 'overdue'],
+    enum: ['pending', 'approved', 'rejected', 'returned', 'overdue', 'completed'],
     default: 'pending',
     required: true,
   },

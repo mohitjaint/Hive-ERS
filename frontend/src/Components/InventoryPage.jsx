@@ -38,13 +38,12 @@ function BorrowModal({ item, onClose, onSuccess }) {
     : item.availableQuantity;
 
   const submit = async () => {
-    if (!returnDate) return setError('Please select a return date');
+    if (!item.isConsumable && !returnDate) return setError('Please select a return date');
     setLoading(true); setError('');
     try {
-      await transactionsApi.request({
-        items: [{ item: item._id, quantity: qty }],
-        expectedReturnDate: returnDate,
-      });
+      const payload = { items: [{ item: item._id, quantity: qty }] };
+      if (!item.isConsumable) payload.expectedReturnDate = returnDate;
+      await transactionsApi.request(payload);
       onSuccess();
     } catch (e) {
       setError(e.message);
@@ -79,12 +78,14 @@ function BorrowModal({ item, onClose, onSuccess }) {
               onChange={(e) => setQty(Math.max(1, Math.min(maxQty, Number(e.target.value))))}
               className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
           </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">Expected Return Date</label>
-            <input type="date" min={minDateStr} value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
-              className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
-          </div>
+          {!item.isConsumable && (
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Expected Return Date</label>
+              <input type="date" min={minDateStr} value={returnDate}
+                onChange={(e) => setReturnDate(e.target.value)}
+                className="w-full bg-bg border border-gray-700 rounded-lg px-3 py-2 text-heading text-sm focus:outline-none focus:border-gold" />
+            </div>
+          )}
           {error && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle size={12}/>{error}</p>}
         </div>
         <div className="flex gap-3 p-5 border-t border-gray-800">
@@ -107,6 +108,9 @@ function ItemFormModal({ item, onClose, onSuccess }) {
     name: item?.name || '',
     description: item?.description || '',
     category: item?.category || '',
+    isConsumable: item?.isConsumable ?? false,
+    isCollegeFunded: item?.isCollegeFunded ?? true,
+    fundingSourceNote: item?.fundingSourceNote || '',
     totalQuantity: item?.totalQuantity ?? '',
     availableQuantity: item?.availableQuantity ?? '',
     damagedQuantity: item?.damagedQuantity ?? 0,
@@ -177,6 +181,54 @@ function ItemFormModal({ item, onClose, onSuccess }) {
             <div><label className="text-xs text-gray-400 block mb-1">Name</label><input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
             <div><label className="text-xs text-gray-400 block mb-1">Category</label><input className={inputCls} value={form.category} onChange={(e) => set('category', e.target.value)} /></div>
           </div>
+          <div className="flex items-center justify-between p-3 bg-bg rounded-xl border border-gray-800">
+            <div>
+              <p className="text-heading text-sm font-medium">Consumable Item</p>
+              <p className="text-gray-500 text-[10px]">Item is given permanently, not returned</p>
+            </div>
+            <button type="button" onClick={() => set('isConsumable', !form.isConsumable)}
+              className={`w-10 h-5 rounded-full transition-colors relative ${form.isConsumable ? 'bg-gold' : 'bg-gray-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${form.isConsumable ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {/* Funding Source Toggle */}
+          <div className="p-3 bg-bg rounded-xl border border-gray-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-heading text-sm font-medium">Funding Source</p>
+                <p className="text-gray-500 text-[10px]">College funds vs alumni donation / member contribution</p>
+              </div>
+              <div className="flex bg-surface p-1 rounded-lg border border-gray-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => set('isCollegeFunded', true)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${form.isCollegeFunded ? 'bg-gold text-black font-semibold' : 'text-gray-400 hover:text-heading'}`}
+                >
+                  College
+                </button>
+                <button
+                  type="button"
+                  onClick={() => set('isCollegeFunded', false)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-colors ${!form.isCollegeFunded ? 'bg-purple-600 text-white font-semibold' : 'text-gray-400 hover:text-heading'}`}
+                >
+                  Donated / Contributed
+                </button>
+              </div>
+            </div>
+            {!form.isCollegeFunded && (
+              <div className="pt-2 border-t border-gray-800">
+                <label className="text-xs text-purple-300 block mb-1">Donor / Contribution Notes</label>
+                <input
+                  className={inputCls}
+                  placeholder="e.g. Donated by Alumni Class of '22, Contributed by Alex & Sam"
+                  value={form.fundingSourceNote}
+                  onChange={(e) => set('fundingSourceNote', e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <div><label className="text-xs text-gray-400 block mb-1">Description</label><textarea className={inputCls} rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
           <div className="grid grid-cols-3 gap-3">
             <div><label className="text-xs text-gray-400 block mb-1">Total Qty</label><input type="number" className={inputCls} value={form.totalQuantity} onChange={(e) => set('totalQuantity', e.target.value)} /></div>
@@ -255,7 +307,7 @@ function PolicyModal({ item, onClose, onSuccess }) {
             </div>
             <button onClick={() => setForm((f) => ({ ...f, allowedToTake: !f.allowedToTake }))}
               className={`w-12 h-6 rounded-full transition-colors relative ${form.allowedToTake ? 'bg-gold' : 'bg-gray-700'}`}>
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.allowedToTake ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${form.allowedToTake ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
           </div>
           <div>
@@ -297,13 +349,28 @@ function ItemCard({ item, isManager, isCoordinator, onBorrow, onEdit, onDelete, 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-heading font-semibold text-sm truncate">{item.name}</h3>
+            <h3 className="text-heading font-semibold text-sm truncate flex items-center gap-1.5 flex-wrap">
+              <span>{item.name}</span>
+              {item.isConsumable && <span className="bg-blue-900/40 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider">CONSUMABLE</span>}
+              {item.isCollegeFunded === false ? (
+                <span className="bg-purple-900/40 text-purple-300 border border-purple-800/40 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider">DONATED / CONTRIBUTED</span>
+              ) : (
+                <span className="bg-amber-900/20 text-amber-400/80 border border-amber-800/30 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider">COLLEGE FUNDED</span>
+              )}
+            </h3>
             <p className="text-gray-500 text-xs mt-0.5 truncate">{item.category}</p>
           </div>
           <StatusBadge item={item} />
         </div>
         <p className="text-gray-500 text-xs leading-relaxed line-clamp-2">{item.description}</p>
         
+        {item.isCollegeFunded === false && item.fundingSourceNote && (
+          <div className="text-[11px] text-purple-300 bg-purple-950/40 px-2 py-1.5 rounded-lg border border-purple-900/40 flex items-center gap-1.5">
+            <span className="font-semibold text-purple-400 shrink-0">Source:</span>
+            <span className="truncate">{item.fundingSourceNote}</span>
+          </div>
+        )}
+
         {item.storageId && (
           <div className="text-[11px] text-gray-400 bg-gray-800/50 px-2 py-1.5 rounded-lg border border-gray-800 flex items-center gap-1.5">
             <Package size={12} className="text-gold" />
@@ -353,6 +420,7 @@ export default function InventoryPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [fundingFilter, setFundingFilter] = useState('');
   const [borrowItem, setBorrowItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -364,13 +432,14 @@ export default function InventoryPage() {
     const params = {};
     if (search) params.search = search;
     if (category) params.category = category;
+    if (fundingFilter) params.isCollegeFunded = fundingFilter;
     inventoryApi.getAll(params)
       .then((res) => { setItems(res.data || []); setError(''); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchItems(); }, [search, category]);
+  useEffect(() => { fetchItems(); }, [search, category, fundingFilter]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -441,6 +510,15 @@ export default function InventoryPage() {
             <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
           </div>
         )}
+        <div className="relative">
+          <select value={fundingFilter} onChange={(e) => setFundingFilter(e.target.value)}
+            className="appearance-none bg-surface border border-gray-800 rounded-lg px-3 py-2 pr-8 text-sm text-heading focus:outline-none focus:border-gold">
+            <option value="">All Funding Sources</option>
+            <option value="true">College Funded</option>
+            <option value="false">Donated / Contributed</option>
+          </select>
+          <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+        </div>
       </div>
 
       {/* Error */}
