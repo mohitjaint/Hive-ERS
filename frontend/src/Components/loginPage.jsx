@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+const preloadedLogo = new Image();
+preloadedLogo.src = Logo;
+
 function LoginPage() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -172,6 +175,11 @@ function LoginPage() {
                 <img
                   src={Logo}
                   alt="ERS Hive"
+                  width="64"
+                  height="64"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="relative w-16 h-16 object-contain"
                 />
               </div>

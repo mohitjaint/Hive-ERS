@@ -129,7 +129,7 @@ function ComponentPage() {
         />
       </div>
 
-      <div className="mt-6 mx-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {filteredComponents.map((component) => (
           <ComponentCard key={component.id} component={component} />
         ))}

@@ -1,6 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Cropper from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 import { inventoryApi, transactionsApi, storageApi } from '../lib/api';
-import { useMember, useIsManager, useIsCoordinator } from '../lib/MemberContext';
+import { useIsManager, useIsCoordinator } from '../lib/MemberContext';
 import {
   Search, Plus, X, Loader2, Package, Edit2, Trash2, ShieldAlert,
   ChevronDown, Upload, AlertCircle
@@ -19,6 +21,166 @@ function StatusBadge({ item }) {
   );
   return (
     <span className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded border bg-emerald-900/30 text-emerald-400 border-emerald-800/40">AVAILABLE</span>
+  );
+}
+
+/* ─── Image crop helpers ─────────────────────────────────────────────────── */
+const IMAGE_CROP_ASPECT = 16 / 9;
+
+function loadImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('This image could not be opened. Please choose another image.'));
+    image.src = source;
+  });
+}
+
+async function createCroppedImage(file, source, cropArea) {
+  const image = await loadImage(source);
+  const validCrop = cropArea
+    && Number.isFinite(cropArea.x)
+    && Number.isFinite(cropArea.y)
+    && Number.isFinite(cropArea.width)
+    && Number.isFinite(cropArea.height)
+    && cropArea.width > 0
+    && cropArea.height > 0;
+  const fallbackHeight = image.naturalHeight || image.height;
+  const fallbackWidth = Math.min(image.naturalWidth || image.width, fallbackHeight * IMAGE_CROP_ASPECT);
+  const fallbackCrop = {
+    x: Math.max(0, Math.round(((image.naturalWidth || image.width) - fallbackWidth) / 2)),
+    y: Math.max(0, Math.round((fallbackHeight - (fallbackWidth / IMAGE_CROP_ASPECT)) / 2)),
+    width: Math.max(1, Math.round(fallbackWidth)),
+    height: Math.max(1, Math.round(fallbackWidth / IMAGE_CROP_ASPECT)),
+  };
+  const area = validCrop ? cropArea : fallbackCrop;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(area.width));
+  canvas.height = Math.max(1, Math.round(area.height));
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Your browser could not prepare the image crop. Please try another image.');
+  context.drawImage(
+    image,
+    area.x,
+    area.y,
+    area.width,
+    area.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+
+  const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+  const extension = mimeType === 'image/png' ? 'png' : 'jpg';
+  const filename = `${file.name.replace(/\.[^/.]+$/, '') || 'inventory-image'}-16x9.${extension}`;
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error('Unable to crop this image. Please choose another image.'));
+    }, mimeType, 0.92);
+  });
+
+  return new File([blob], filename, { type: mimeType });
+}
+
+function ImageCropModal({ file, onApply, onClose }) {
+  const [source, setSource] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [cropArea, setCropArea] = useState(null);
+  const [mediaReady, setMediaReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (active && typeof reader.result === 'string') setSource(reader.result);
+    };
+    reader.onerror = () => {
+      if (active) setError('This image could not be read. Please choose another JPEG or PNG image.');
+    };
+    reader.readAsDataURL(file);
+
+    return () => {
+      active = false;
+      reader.abort();
+    };
+  }, [file]);
+
+  const reset = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setError('');
+  };
+
+  const apply = async () => {
+    if (!cropArea) return;
+    setSaving(true);
+    setError('');
+    try {
+      onApply(await createCroppedImage(file, source, cropArea));
+    } catch (cropError) {
+      setError(cropError.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="crop-image-title">
+      <div className="flex max-h-[100dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-800 bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-800 p-4 sm:p-5">
+          <div>
+            <h3 id="crop-image-title" className="text-lg font-bold text-heading">Adjust Image</h3>
+            <p className="mt-0.5 text-xs text-gray-500">Position and zoom your image in the 16:9 card frame.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-md p-1 text-gray-500 transition-colors hover:text-gray-300 disabled:opacity-50" aria-label="Close image editor"><X size={20} /></button>
+        </div>
+        <div className="p-4 sm:p-5">
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+            {source ? <Cropper
+              image={source}
+              crop={crop}
+              zoom={zoom}
+              aspect={IMAGE_CROP_ASPECT}
+              cropShape="rect"
+              showGrid={false}
+              disableAutomaticStylesInjection
+              roundCropAreaPixels
+              style={{
+                containerStyle: { position: 'absolute', inset: 0 },
+                mediaStyle: { maxWidth: 'none' },
+              }}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(_, pixels) => setCropArea(pixels.width > 0 && pixels.height > 0 ? pixels : null)}
+              onMediaLoaded={() => setMediaReady(true)}
+              mediaProps={{ onError: () => setError('The image could not be loaded. Please choose another image.') }}
+            /> : <div className="flex h-full items-center justify-center text-sm text-gray-400"><Loader2 size={20} className="mr-2 animate-spin" />Preparing image…</div>}
+          </div>
+          <div className="mt-5 space-y-2">
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <label htmlFor="image-crop-zoom">Zoom</label>
+              <span>{Math.round(zoom * 100)}%</span>
+            </div>
+            <input id="image-crop-zoom" type="range" min="1" max="3" step="0.01" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} className="h-2 w-full cursor-pointer accent-gold" />
+          </div>
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+        </div>
+        <div className="flex flex-col gap-2 border-t border-gray-800 p-4 sm:flex-row sm:p-5">
+          <button type="button" onClick={onClose} disabled={saving} className="h-11 rounded-lg border border-gray-700 px-4 text-sm text-gray-400 transition-colors hover:border-gray-500 disabled:opacity-50">Cancel</button>
+          <button type="button" onClick={reset} disabled={saving} className="h-11 rounded-lg border border-gray-700 px-4 text-sm text-gray-300 transition-colors hover:border-gold/50 hover:text-gold disabled:opacity-50">Reset</button>
+          <button type="button" onClick={apply} disabled={saving || !mediaReady || !cropArea} className="h-11 rounded-lg bg-gold px-5 text-sm font-bold text-black transition-colors hover:bg-gold/90 disabled:opacity-60 sm:ml-auto">
+            {saving ? 'Applying…' : 'Apply Crop'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -104,6 +266,8 @@ function BorrowModal({ item, onClose, onSuccess }) {
 /* ─── Item Form Modal (add / edit) ─────────────────────────────────────────── */
 function ItemFormModal({ item, onClose, onSuccess }) {
   const isEdit = !!item;
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const [form, setForm] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -117,22 +281,63 @@ function ItemFormModal({ item, onClose, onSuccess }) {
     storageId: item?.storageId?._id || '',
   });
   const [imageFile, setImageFile] = useState(null);
+  const [originalImageFile, setOriginalImageFile] = useState(null);
   const [preview, setPreview] = useState(item?.image || null);
+  const [cropImageFile, setCropImageFile] = useState(null);
+  const previewUrlRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [storages, setStorages] = useState([]);
+
+  const canResetImage = useMemo(() => Boolean(imageFile || (!imageFile && preview && preview !== item?.image)), [imageFile, preview, item?.image]);
 
   useEffect(() => {
     storageApi.getAll().then(res => setStorages(res.data || [])).catch(() => {});
   }, []);
 
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const replacePreview = (file) => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = URL.createObjectURL(file);
+    setPreview(previewUrlRef.current);
+  };
 
   const pickImage = (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    setImageFile(f);
-    setPreview(URL.createObjectURL(f));
+    setOriginalImageFile(f);
+    setCropImageFile(f);
+    e.target.value = '';
+  };
+
+  const applyCrop = (croppedFile) => {
+    setImageFile(croppedFile);
+    replacePreview(croppedFile);
+    setCropImageFile(null);
+  };
+
+  const openCameraPicker = () => {
+    cameraInputRef.current?.click();
+  };
+
+  const openGalleryPicker = () => {
+    galleryInputRef.current?.click();
+  };
+
+  const resetImageSelection = () => {
+    setImageFile(null);
+    setOriginalImageFile(null);
+    setCropImageFile(null);
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPreview(item?.image || null);
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const submit = async () => {
@@ -162,6 +367,7 @@ function ItemFormModal({ item, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      {cropImageFile && <ImageCropModal file={cropImageFile} onApply={applyCrop} onClose={() => setCropImageFile(null)} />}
       <div className="w-full max-w-lg bg-surface rounded-2xl border border-gray-800 shadow-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-gray-800 shrink-0">
           <h3 className="text-heading font-bold text-lg">{isEdit ? 'Edit Item' : 'Add New Item'}</h3>
@@ -169,15 +375,42 @@ function ItemFormModal({ item, onClose, onSuccess }) {
         </div>
         <div className="p-5 space-y-3 overflow-y-auto flex-1">
           {/* Image upload */}
-          <label className="block w-full cursor-pointer">
-            <div className="h-36 rounded-xl border-2 border-dashed border-gray-700 hover:border-gold/50 transition-colors flex items-center justify-center overflow-hidden bg-bg">
+          <div className="space-y-3">
+            <div className="aspect-video rounded-xl border-2 border-dashed border-gray-700 hover:border-gold/50 transition-colors flex items-center justify-center overflow-hidden bg-bg">
               {preview
                 ? <img src={preview} alt="preview" className="h-full w-full object-cover rounded-xl" />
-                : <div className="flex flex-col items-center gap-2 text-gray-600"><Upload size={28} /><span className="text-xs">Click to upload image</span></div>}
+                : <div className="flex flex-col items-center gap-2 text-gray-600 text-center px-4"><Upload size={28} /><span className="text-xs">Take a photo or choose from gallery</span></div>}
             </div>
-            <input type="file" accept="image/*" className="hidden" onChange={pickImage} />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={openCameraPicker}
+                className="h-11 rounded-lg border border-gray-700 text-gray-300 text-sm hover:border-gold/50 hover:text-gold transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+              >
+                <Upload size={16} />
+                Take Photo
+              </button>
+              <button
+                type="button"
+                onClick={openGalleryPicker}
+                className="h-11 rounded-lg border border-gray-700 text-gray-300 text-sm hover:border-gold/50 hover:text-gold transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+              >
+                <Upload size={16} />
+                Choose from Gallery
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-[11px] text-gray-500">
+              <span>Mobile browsers can open the camera directly.</span>
+              <div className="flex items-center gap-3">
+                {originalImageFile && <button type="button" onClick={() => setCropImageFile(originalImageFile)} className="text-gold hover:text-gold/80 transition-colors">Adjust crop</button>}
+                {canResetImage && <button type="button" onClick={resetImageSelection} className="text-gold hover:text-gold/80 transition-colors">Remove photo</button>}
+              </div>
+            </div>
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pickImage} />
+            <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={pickImage} />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="text-xs text-gray-400 block mb-1">Name</label><input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} /></div>
             <div><label className="text-xs text-gray-400 block mb-1">Category</label><input className={inputCls} value={form.category} onChange={(e) => set('category', e.target.value)} /></div>
           </div>
@@ -230,7 +463,7 @@ function ItemFormModal({ item, onClose, onSuccess }) {
           </div>
 
           <div><label className="text-xs text-gray-400 block mb-1">Description</label><textarea className={inputCls} rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div><label className="text-xs text-gray-400 block mb-1">Total Qty</label><input type="number" className={inputCls} value={form.totalQuantity} onChange={(e) => set('totalQuantity', e.target.value)} /></div>
             <div><label className="text-xs text-gray-400 block mb-1">Available</label><input type="number" className={inputCls} value={form.availableQuantity} onChange={(e) => set('availableQuantity', e.target.value)} /></div>
             <div><label className="text-xs text-gray-400 block mb-1">Damaged</label><input type="number" className={inputCls} value={form.damagedQuantity} onChange={(e) => set('damagedQuantity', e.target.value)} /></div>
@@ -248,10 +481,10 @@ function ItemFormModal({ item, onClose, onSuccess }) {
           </div>
           {error && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle size={12}/>{error}</p>}
         </div>
-        <div className="flex gap-3 p-5 border-t border-gray-800 shrink-0">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-gray-700 text-gray-400 text-sm hover:border-gray-500 transition-colors">Cancel</button>
+        <div className="flex flex-col sm:flex-row gap-3 p-5 border-t border-gray-800 shrink-0">
+          <button onClick={onClose} className="w-full min-h-14 sm:min-h-12 sm:flex-1 rounded-lg border border-gray-700 text-sm font-medium text-gray-300 hover:border-gray-500 hover:text-heading transition-colors">Cancel</button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-gold text-black font-bold text-sm hover:bg-gold/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            className="w-full min-h-14 sm:min-h-12 sm:flex-1 rounded-lg bg-gold text-black font-bold text-sm hover:bg-gold/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {loading && <Loader2 size={14} className="animate-spin" />}
             {isEdit ? 'Save Changes' : 'Create Item'}
           </button>
@@ -341,7 +574,7 @@ function ItemCard({ item, isManager, isCoordinator, onBorrow, onEdit, onDelete, 
 
   return (
     <div className="flex flex-col rounded-xl border border-gray-800 bg-surface hover:border-gold/30 transition-colors group">
-      <div className="h-44 rounded-t-xl overflow-hidden bg-gray-900 border-b border-gray-800">
+      <div className="aspect-video rounded-t-xl overflow-hidden bg-gray-900 border-b border-gray-800">
         {item.image
           ? <img src={item.image} alt={item.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
           : <div className="h-full flex items-center justify-center"><Package size={40} className="text-gray-700" /></div>}
@@ -411,7 +644,6 @@ function ItemCard({ item, isManager, isCoordinator, onBorrow, onEdit, onDelete, 
 
 /* ─── Main Page ─────────────────────────────────────────────────────────────── */
 export default function InventoryPage() {
-  const { member } = useMember();
   const isManager = useIsManager();
   const isCoordinator = useIsCoordinator();
 
@@ -439,7 +671,34 @@ export default function InventoryPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchItems(); }, [search, category, fundingFilter]);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      const params = {};
+      if (search) params.search = search;
+      if (category) params.category = category;
+      if (fundingFilter) params.isCollegeFunded = fundingFilter;
+
+      try {
+        const res = await inventoryApi.getAll(params);
+        if (active) {
+          setItems(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [search, category, fundingFilter]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -455,7 +714,7 @@ export default function InventoryPage() {
   const categories = [...new Set(items.map((i) => i.category).filter(Boolean))];
 
   return (
-    <div className="w-full min-h-screen bg-bg text-fg px-4 md:px-8 py-8 flex flex-col gap-6">
+    <div className="w-full min-h-screen bg-bg text-fg px-4 md:px-8 py-6 md:py-8 flex flex-col gap-6 overflow-x-hidden">
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 px-4 py-2.5 bg-emerald-900/80 border border-emerald-700/40 text-emerald-300 text-sm rounded-xl shadow-lg backdrop-blur-sm">
@@ -485,15 +744,15 @@ export default function InventoryPage() {
         </div>
         {isManager && (
           <button onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gold text-black font-bold text-sm rounded-lg hover:bg-gold/90 transition-colors self-start sm:self-auto">
+            className="inline-flex h-11 items-center gap-2 px-4 bg-gold text-black font-bold text-sm rounded-lg hover:bg-gold/90 transition-colors self-start sm:self-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60">
             <Plus size={16} /> Add Item
           </button>
         )}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex items-center gap-2 flex-1 bg-surface border border-gray-800 rounded-lg px-3 py-2">
+      <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0 bg-surface border border-gray-800 rounded-lg px-3 py-2">
           <Search size={15} className="text-gray-500 shrink-0" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search inventory..."
@@ -503,7 +762,7 @@ export default function InventoryPage() {
         {categories.length > 0 && (
           <div className="relative">
             <select value={category} onChange={(e) => setCategory(e.target.value)}
-              className="appearance-none bg-surface border border-gray-800 rounded-lg px-3 py-2 pr-8 text-sm text-heading focus:outline-none focus:border-gold">
+              className="appearance-none w-full sm:w-auto bg-surface border border-gray-800 rounded-lg px-3 py-2 pr-8 text-sm text-heading focus:outline-none focus:border-gold">
               <option value="">All Categories</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -511,8 +770,8 @@ export default function InventoryPage() {
           </div>
         )}
         <div className="relative">
-          <select value={fundingFilter} onChange={(e) => setFundingFilter(e.target.value)}
-            className="appearance-none bg-surface border border-gray-800 rounded-lg px-3 py-2 pr-8 text-sm text-heading focus:outline-none focus:border-gold">
+            <select value={fundingFilter} onChange={(e) => setFundingFilter(e.target.value)}
+            className="appearance-none w-full sm:w-auto bg-surface border border-gray-800 rounded-lg px-3 py-2 pr-8 text-sm text-heading focus:outline-none focus:border-gold">
             <option value="">All Funding Sources</option>
             <option value="true">College Funded</option>
             <option value="false">Donated / Contributed</option>

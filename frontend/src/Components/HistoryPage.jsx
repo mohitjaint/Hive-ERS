@@ -122,7 +122,30 @@ export default function HistoryPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch(); }, [statusFilter]);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      const params = statusFilter ? { status: statusFilter } : {};
+      try {
+        const res = await transactionsApi.getMy(params);
+        if (active) {
+          setTransactions(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [statusFilter]);
 
   const returned   = transactions.filter((t) => t.status === 'returned').length;
   const overdue    = transactions.filter((t) => t.status === 'overdue').length;
