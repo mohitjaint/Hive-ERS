@@ -16,41 +16,47 @@ A comprehensive inventory management application designed specifically for the E
 ## ✨ Features
 
 ### Core Functionality
-*   **Inventory Management:** Add, edit, delete, and add images and detailed descriptions.
-*   **Item Borrowing System:** Request to borrow items with expected return dates.
-*   **Approval Workflow:** Inventory managers and coordinators can approve or reject requests.
-*   **Inventory Policies:** Set borrowing limits and duration limits per item.
-*   **Storage Management:** Organize items in storage locations.
-*   **Transaction History:** Track all borrowing/returning activities.
-*   **Overdue Tracking:** Automatic identification of overdue items.
-*   **Role-Based Access:** Different permissions for members, managers, and coordinators.
+
+- **Inventory Management:** Add, edit, delete, and add images and detailed descriptions.
+- **Item Borrowing System:** Request to borrow items with expected return dates.
+- **Approval Workflow:** Inventory managers and coordinators can approve or reject requests.
+- **Inventory Policies:** Set borrowing limits and duration limits per item.
+- **Storage Management:** Organize items in storage locations.
+- **Transaction History:** Track all borrowing/returning activities.
+- **Overdue Tracking:** Automatic identification of overdue items.
+- **Role-Based Access:** Different permissions for members, managers, and coordinators.
 
 ### Technical Stack
-*   **Frontend:** React 19, Vite, React Router DOM, TailwindCSS, Lucide React icons, Recharts
-*   **Backend:** Node.js, Express, MongoDB (with Mongoose)
-*   **Authentication:** Google OAuth via Better-Auth
-*   **File Storage:** Cloudinary integration for image storage
-*   **Development:** ESLint for code quality, Nodemon for development
+
+- **Frontend:** React 19, Vite, React Router DOM, TailwindCSS, Lucide React icons, Recharts
+- **Backend:** Node.js, Express, MongoDB (with Mongoose)
+- **Authentication:** Google OAuth via Better-Auth
+- **File Storage:** Cloudinary integration for image storage
+- **Development:** ESLint for code quality, Nodemon for development
 
 ---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
-*   Node.js (v18+ recommended)
-*   MongoDB Atlas account (or local MongoDB instance)
-*   Cloudinary account (for image storage)
-*   Google Cloud Console project (for OAuth)
-*   npm or yarn
+
+- Node.js (v18+ recommended)
+- MongoDB Atlas account (or local MongoDB instance)
+- Cloudinary account (for image storage)
+- Google Cloud Console project (for OAuth)
+- npm or yarn
 
 ### Installation
 
 **1. Clone the repository**
+
 ```bash
 git clone https://github.com/yourusername/ERS-Hive-Inventory-Management-App.git
 cd hive
 ```
 
 **2. Backend Setup**
+
 ```bash
 cd backend
 npm install
@@ -63,6 +69,7 @@ npm run dev
 ```
 
 **3. Frontend Setup**
+
 ```bash
 cd frontend
 npm install
@@ -73,6 +80,7 @@ cp .env.example .env  # If example exists, otherwise create manually
 # Start development server
 npm run dev
 ```
+
 ## ⚙️ Environment Variables
 
 ### Backend ( `backend/.env` )
@@ -82,7 +90,6 @@ PORT=3030
 MONGODB_URI="your_mongodb_connection_string"
 CORS_ORIGIN=http://localhost:3001
 BETTER_AUTH_SECRET="your_strong_secret_here"
-BETTER_AUTH_URL=http://localhost:3030
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
@@ -91,6 +98,9 @@ CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
+
+In production behind the Vercel rewrite, Better Auth should derive its public origin from trusted proxy headers, so do not pin `BETTER_AUTH_URL` to the Render host.
+
 ### Frontend ( `frontend/.env` )
 
 ```env
@@ -101,46 +111,47 @@ VITE_API_URL=http://localhost:3030
 
 **Authentication**
 
-*   `POST /api/auth/sign-in` - Sign in with email/password
-*   `POST /api/auth/sign-out` - Sign out
-*   `GET /api/auth/session` - Get current session
+- `POST /api/auth/sign-in` - Sign in with email/password
+- `POST /api/auth/sign-out` - Sign out
+- `GET /api/auth/session` - Get current session
 
 **Members**
 
-*   `GET /api/members` - Get all members (admin only)
-*   `GET /api/members/:id` - Get member by ID
-*   `PUT /api/members/:id` - Update member
-*   `DELETE /api/members/:id` - Delete member
+- `GET /api/members` - Get all members (admin only)
+- `GET /api/members/:id` - Get member by ID
+- `PUT /api/members/:id` - Update member
+- `DELETE /api/members/:id` - Delete member
 
 **Inventory**
 
-*   `GET /api/inventory` - Get all items (with filtering)
-*   `GET /api/inventory/:id` - Get item by ID
-*   `POST /api/inventory` - Create new item
-*   `PUT /api/inventory/:id` - Update item
-*   `DELETE /api/inventory/:id` - Delete item
-*   `POST /api/inventory/:id/policy` - Set item policy
+- `GET /api/inventory` - Get all items (with filtering)
+- `GET /api/inventory/:id` - Get item by ID
+- `POST /api/inventory` - Create new item
+- `PUT /api/inventory/:id` - Update item
+- `DELETE /api/inventory/:id` - Delete item
+- `POST /api/inventory/:id/policy` - Set item policy
 
 **Transactions**
 
-*   `GET /api/transactions` - Get transactions (with filtering)
-*   `GET /api/transactions/my` - Get current user's transactions
-*   `POST /api/transactions/request` - Request to borrow items
-*   `PUT /api/transactions/:id/approve` - Approve request
-*   `PUT /api/transactions/:id/reject` - Reject request
-*   `PUT /api/transactions/:id/return` - Mark item as returned
+- `GET /api/transactions` - Get transactions (with filtering)
+- `GET /api/transactions/my` - Get current user's transactions
+- `POST /api/transactions/request` - Request to borrow items
+- `PUT /api/transactions/:id/approve` - Approve request
+- `PUT /api/transactions/:id/reject` - Reject request
+- `PUT /api/transactions/:id/return` - Mark item as returned
 
 **Storage**
 
-*   `GET /api/storage` - Get all storage locations
-*   `GET /api/storage/:id` - Get storage by ID
-*   `POST /api/storage` - Create new storage
-*   `PUT /api/storage/:id` - Update storage
-*   `DELETE /api/storage/:id` - Delete storage
+- `GET /api/storage` - Get all storage locations
+- `GET /api/storage/:id` - Get storage by ID
+- `POST /api/storage` - Create new storage
+- `PUT /api/storage/:id` - Update storage
+- `DELETE /api/storage/:id` - Delete storage
 
 ## 👥 Usage Guide
 
 ### For Members (Regular Users)
+
 1. Sign in with your Google account.
 2. Browse available inventory items.
 3. Select items to borrow and specify expected return dates.
@@ -149,7 +160,8 @@ VITE_API_URL=http://localhost:3030
 6. Return borrowed items when finished.
 
 ### For Inventory Managers
-1. *All member permissions plus:*
+
+1. _All member permissions plus:_
 2. Add new inventory items.
 3. Edit existing item details.
 4. Approve or reject borrowing requests.
@@ -157,7 +169,8 @@ VITE_API_URL=http://localhost:3030
 6. Mark items as returned.
 
 ### For Coordinators (Admins)
-1. *All manager permissions plus:*
+
+1. _All manager permissions plus:_
 2. Manage storage locations/boxes.
 3. View all transactions across all members.
 4. Manage user roles and permissions.
@@ -165,6 +178,7 @@ VITE_API_URL=http://localhost:3030
 ## 🗄️ Database Models
 
 ### Member
+
 ```javascript
 {
   _id: ObjectId,
@@ -178,6 +192,7 @@ VITE_API_URL=http://localhost:3030
 ```
 
 ### Inventory Item
+
 ```javascript
 {
   _id: ObjectId,
@@ -200,6 +215,7 @@ VITE_API_URL=http://localhost:3030
 ```
 
 ### Transaction
+
 ```javascript
 {
   _id: ObjectId,
@@ -221,6 +237,7 @@ VITE_API_URL=http://localhost:3030
 ```
 
 ### Storage
+
 ```javascript
 {
   _id: ObjectId,
@@ -234,12 +251,12 @@ VITE_API_URL=http://localhost:3030
 
 ## 🔍 Features in Detail
 
-*   **Inventory Management:** Add items with name, description, category, quantity, and image. Track available vs total quantity, mark damaged items separately, assign items to storage locations, and set borrowing policies per item.
-*   **Borrowing System:** Users can request to borrow items with expected return dates. Quantity limits are enforced per item and per member. Automatic status updates (pending → approved → returned/overdue) and email notifications for request status changes.
-*   **Policy Management:** Enable/disable borrowing for individual items, set maximum quantity per member, and set maximum borrowing duration. Policies are enforced automatically by the system.
-*   **Storage Organization:** Create storage boxes/containers, assign items to specific storage locations, and track which items are in which containers.
+- **Inventory Management:** Add items with name, description, category, quantity, and image. Track available vs total quantity, mark damaged items separately, assign items to storage locations, and set borrowing policies per item.
+- **Borrowing System:** Users can request to borrow items with expected return dates. Quantity limits are enforced per item and per member. Automatic status updates (pending → approved → returned/overdue) and email notifications for request status changes.
+- **Policy Management:** Enable/disable borrowing for individual items, set maximum quantity per member, and set maximum borrowing duration. Policies are enforced automatically by the system.
+- **Storage Organization:** Create storage boxes/containers, assign items to specific storage locations, and track which items are in which containers.
 
-*   **Reporting & Tracking:** Dashboard overview of inventory status, active borrows, pending requests, and overdue items. Full transaction history with filtering, plus personal borrowing history for each user.
+- **Reporting & Tracking:** Dashboard overview of inventory status, active borrows, pending requests, and overdue items. Full transaction history with filtering, plus personal borrowing history for each user.
 
 ## 🤝 Contributing
 
@@ -249,7 +266,7 @@ VITE_API_URL=http://localhost:3030
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-*Please make sure to update tests as appropriate and adhere to the project code style.*
+_Please make sure to update tests as appropriate and adhere to the project code style._
 
 ## 📝 License
 
@@ -257,7 +274,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 🙏 Acknowledgments
 
-*   **ERS Robotics Club** for providing the use case and inspiration.
-*   The open-source community for the various libraries and frameworks used.
-*   Contributors who have helped improve this project.
-
+- **ERS Robotics Club** for providing the use case and inspiration.
+- The open-source community for the various libraries and frameworks used.
+- Contributors who have helped improve this project.
