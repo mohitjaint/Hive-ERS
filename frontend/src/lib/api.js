@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3030';
+const BASE = import.meta.env.VITE_BACKEND_URL || window.location.origin;
 const API = `${BASE}/api/v1`;
 
 async function request(method, path, body, isFormData = false) {
