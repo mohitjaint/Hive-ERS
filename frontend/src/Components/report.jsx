@@ -1,4 +1,3 @@
-import React from "react";
 import { Award, ChartColumn, CircleAlert, TrendingUp } from "lucide-react";
 import {
   PieChart,
@@ -29,7 +28,7 @@ const piedata = [
 ];
 const ReportPage = () => {
   return (
-    <div className="p-5 relative max-w-screen mx-auto w-full bg-bg">
+    <div className="p-4 sm:p-5 relative max-w-screen mx-auto w-full bg-bg overflow-x-hidden">
       <div className="text-heading mb-6">
         <h1 className="text-2xl font-medium">Reports</h1>
         <p className="text-fg text-sm font-mono">Your performance analytics</p>

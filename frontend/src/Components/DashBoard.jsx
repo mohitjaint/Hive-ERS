@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { transactionsApi } from '../lib/api';
 import { useMember } from '../lib/MemberContext';
 import {
-  Package, Clock, AlertTriangle, CheckCircle2, RefreshCw, ArrowRight, Loader2
+  Package, Clock, AlertTriangle, CheckCircle2, ArrowRight, Loader2
 } from 'lucide-react';
 
 function StatusBadge({ status }) {

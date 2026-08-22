@@ -93,7 +93,29 @@ export default function StoragePage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchStorages(); }, []);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      try {
+        const res = await storageApi.getAll();
+        if (active) {
+          setStorages(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 

@@ -3,7 +3,7 @@ import { transactionsApi, membersApi } from '../lib/api';
 import { useMember, useIsCoordinator, useIsManager } from '../lib/MemberContext';
 import {
   Loader2, CheckCircle, XCircle, RotateCcw, Users, Package,
-  AlertCircle, ShieldCheck, UserCheck, UserX, ChevronDown, X
+  AlertCircle, ShieldCheck, UserCheck, UserX, X
 } from 'lucide-react';
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
@@ -130,7 +130,30 @@ function TransactionsTab({ isManager, isCoordinator }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch(); }, [statusFilter]);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      const params = statusFilter ? { status: statusFilter } : {};
+      try {
+        const res = await transactionsApi.getAll(params);
+        if (active) {
+          setTransactions(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [statusFilter]);
 
   const approve = async (tx) => {
     try { await transactionsApi.approve(tx._id); showToast('Approved!'); fetch(); }
@@ -265,7 +288,29 @@ function MembersTab() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      try {
+        const res = await membersApi.getAll();
+        if (active) {
+          setMembers(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const toggleActive = async (m) => {
     try { await membersApi.toggleActive(m._id); showToast(`${m.name} ${m.active ? 'deactivated' : 'activated'}`); fetch(); }
@@ -411,7 +456,29 @@ function TransferPowerTab() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchMembers(); }, []);
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      if (!active) return;
+      setLoading(true);
+      try {
+        const res = await membersApi.getAll();
+        if (active) {
+          setMembers(res.data || []);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(e.message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const coordinators = members.filter((m) => m.role === 'coordinator');
   const nonCoordinators = members.filter((m) => m.role !== 'coordinator');

@@ -1,7 +1,5 @@
 import {useState} from 'react';
-import {Search ,Menu ,X} from 'lucide-react';
-import SideBar from './sidebar';
-import SearchBar from './searchBar';
+import {Search} from 'lucide-react';
 
 //i am not adding any images to this PR as this data will be fetched from the backend and the database in the future.
 
@@ -123,7 +121,6 @@ function ToolCard({tool})
 }
 
 function ToolsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const filteredTools = tools.filter(
@@ -136,53 +133,8 @@ function ToolsPage() {
     
 
       {/* The mobile sidebar functionality is to be added into the sidebar component itself this is just a temporay solution */}
-    <div className="flex h-dvh w-full overflow-hidden bg-bg">
-      {/* Desktop sidebar */}
-      {/* <div className="hidden shrink-0 md:block">
-        <SideBar />
-      </div>
-
-    
-
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative z-10">
-            <SideBar />
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="absolute right-3 top-6 text-gray-400 hover:text-white"
-              aria-label="Close menu"
-            >
-              <X size={22} />
-            </button>
-          </div>
-        </div>
-      )} */}
+    <div className="flex h-dvh w-full overflow-x-hidden bg-bg">
       <div className="flex min-w-0 flex-1 flex-col">
-
-        {/* <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-gray-800 px-4">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="text-white md:hidden"
-            aria-label="Open menu"
-          >
-            <Menu size={24} />
-          </button>
-
-          <div className="hidden md:block">
-            <SearchBar />
-          </div>
-
-        </header> */}
-
-
         <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
           <h1 className="text-2xl font-bold text-white">Tools</h1>
           <p className="mt-1 text-sm text-[#9CA3AF]">
@@ -201,8 +153,7 @@ function ToolsPage() {
             />
           </div>
 
-          <div className="mt-6 mx-4
-           grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTools.map((tool) => (
               <ToolCard key={tool.id} tool={tool} />
             ))}
