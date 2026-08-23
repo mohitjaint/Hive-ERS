@@ -7,6 +7,11 @@
     {
       "source": "/api/v1/:path*",
       "destination": "https://hive-d1lj.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
+
